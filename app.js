@@ -1,9 +1,9 @@
 (() => {
   const WS_URL = "wss://backend.incariclient.org/v1/ws";
   const PROTOCOL_VERSION = 1;
-  const CLIENT_BUILD = "incari/0.1.6-v4";
+  const CLIENT_BUILD = "incari/0.1.6-v5";
   const STORAGE_KEY = "incari_chat_session_v1";
-  const PROFILE_KEY = "incari_profile_v4";
+  const PROFILE_KEY = "incari_profile_v5";
 
   const ERROR_MESSAGES = {
     unauthorized: "Wrong username or password.",
@@ -16,6 +16,80 @@
     update: "Incari updated its protocol. Please update this web client.",
     unavailable: "Incari online service is temporarily unavailable.",
     offline: "Not connected to Incari's servers."
+  };
+
+  const WARDROBE_CATALOG = {
+    capes: {
+      title: "Capes",
+      items: [
+        { id: "none", name: "None", colors: null },
+        { id: "frost", name: "Frost", colors: ["#56ccf2", "#2f80ed", "#ffffff"] },
+        { id: "aurora", name: "Aurora", colors: ["#0f2027", "#38d9a9", "#9b51e0"] },
+        { id: "midnight", name: "Midnight", colors: ["#0d1326", "#1d2d50", "#f2c94c"] },
+        { id: "ember", name: "Ember", colors: ["#4a0e0e", "#eb5757", "#f2994a"] },
+        { id: "sakura", name: "Sakura", colors: ["#ffafcc", "#ffc8dd", "#ffffff"] },
+        { id: "tide", name: "Tide", colors: ["#1b4965", "#62b6cb", "#cae9ff"] },
+        { id: "mono", name: "Mono", colors: ["#161b22", "#ffffff", "#8b949e"] }
+      ]
+    },
+    hats: {
+      title: "Hats",
+      items: [
+        { id: "none", name: "None", icon: "✕" },
+        { id: "crown", name: "Crown", icon: "👑", color: "#f2c94c" },
+        { id: "halo", name: "Angel Halo", icon: "😇", color: "#fff3b0" },
+        { id: "horns", name: "Demon Horns", icon: "😈", color: "#eb5757" },
+        { id: "ears", name: "Cat Ears", icon: "🐱", color: "#ffafcc" },
+        { id: "tophat", name: "Top Hat", icon: "🎩", color: "#30363d" },
+        { id: "visor", name: "Cyber Visor", icon: "🥽", color: "#38d9a9" }
+      ]
+    },
+    wings: {
+      title: "Wings & Back",
+      items: [
+        { id: "none", name: "None", icon: "✕" },
+        { id: "aether", name: "Aether Wings", icon: "🪽", color: "#38d9a9" },
+        { id: "dragon", name: "Dragon Wings", icon: "🐉", color: "#9b51e0" },
+        { id: "angel", name: "Seraph Wings", icon: "🕊️", color: "#ffffff" },
+        { id: "mech", name: "Jetpack", icon: "🚀", color: "#56ccf2" }
+      ]
+    },
+    nametags: {
+      title: "Name Tags",
+      items: [
+        { id: "default", name: "Default", color: "#f0f6fc" },
+        { id: "mint", name: "Incari Mint", color: "#38d9a9" },
+        { id: "frost", name: "Glacier", color: "#56ccf2" },
+        { id: "ember", name: "Ember", color: "#eb5757" },
+        { id: "gold", name: "Solar Gold", color: "#f2c94c" },
+        { id: "sakura", name: "Sakura", color: "#ffafcc" },
+        { id: "void", name: "Void", color: "#bb6bd9" },
+        { id: "rainbow", name: "Chroma", color: "linear-gradient(90deg,#ff6b6b,#feca57,#48dbfb,#ff9ff3)" }
+      ]
+    },
+    trails: {
+      title: "Trails",
+      items: [
+        { id: "none", name: "None", icon: "✕" },
+        { id: "sparkle", name: "Mint Sparkles", icon: "✨", color: "#38d9a9" },
+        { id: "flame", name: "Blaze Trail", icon: "🔥", color: "#f2994a" },
+        { id: "snow", name: "Snowflakes", icon: "❄️", color: "#56ccf2" },
+        { id: "hearts", name: "Hearts", icon: "💖", color: "#ff6b81" }
+      ]
+    },
+    emotes: {
+      title: "Emotes",
+      items: [
+        { id: "wave", name: "Wave", icon: "👋" },
+        { id: "dance", name: "Hype Dance", icon: "🕺" },
+        { id: "gg", name: "GG Salutes", icon: "🫡" },
+        { id: "backflip", name: "Backflip", icon: "🤸" },
+        { id: "laugh", name: "Laugh", icon: "😂" },
+        { id: "clap", name: "Applause", icon: "👏" },
+        { id: "sit", name: "Chill Sit", icon: "🧘" },
+        { id: "flex", name: "Flex", icon: "💪" }
+      ]
+    }
   };
 
   const DEFAULT_FACE = [
@@ -33,7 +107,6 @@
     "#38d9a9", "#20a4f3", "#f85149", "#e3b341",
     "#b58463", "#2f1e14", "#ffffff", "#0d1117"
   ];
-
   const state = {
     ws: null,
     greeted: false,
@@ -44,7 +117,9 @@
     reconnectDelay: 1500,
     session: loadSession(),
     profile: loadProfile(),
-    draftFace: null,
+    draftProfile: null,
+    activeCategory: "capes",
+    previewBack: true,
     activeBrush: "#38d9a9",
     isPainting: false,
     friends: new Map(),
@@ -56,7 +131,7 @@
     localMsgCounter: 0
   };
 
-  // DOM Elements
+  // DOM References
   const loginView = document.getElementById("login-view");
   const chatView = document.getElementById("chat-view");
   const loginForm = document.getElementById("login-form");
@@ -105,58 +180,57 @@
   const messageInput = document.getElementById("message-input");
   const toastContainer = document.getElementById("toast-container");
 
-  // Modal Elements
+  // Wardrobe DOM Refs
   const customizerModal = document.getElementById("customizer-modal");
   const closeModalBtn = document.getElementById("close-modal-btn");
-  const cancelModalBtn = document.getElementById("cancel-modal-btn");
   const saveCosmeticsBtn = document.getElementById("save-cosmetics-btn");
+  const wardrobeCatTitle = document.getElementById("wardrobe-cat-title");
+  const wardrobeItemsGrid = document.getElementById("wardrobe-items-grid");
+  const wardrobeSkinPanel = document.getElementById("wardrobe-skin-panel");
   const faceEditorCanvas = document.getElementById("face-editor-canvas");
   const colorSwatches = document.getElementById("color-swatches");
   const customColorPicker = document.getElementById("custom-color-picker");
   const skinFileInput = document.getElementById("skin-file-input");
   const resetSkinBtn = document.getElementById("reset-skin-btn");
   const customDisplayNameInput = document.getElementById("custom-display-name");
-  const capeStyleSelect = document.getElementById("cape-style-select");
-  const syncStatusLabel = document.getElementById("sync-status-label");
+  const previewNametag = document.getElementById("preview-nametag");
+  const characterPreviewCanvas = document.getElementById("character-preview-canvas");
+  const flipPreviewBtn = document.getElementById("flip-preview-btn");
+  const showOthersToggle = document.getElementById("show-others-toggle");
 
-  // Storage Helpers
   function loadSession() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
+    } catch { return null; }
   }
 
   function saveSession(username, token) {
     state.session = { username, token };
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.session));
-    } catch {}
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.session)); } catch {}
   }
 
   function clearSession() {
     state.session = null;
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-    } catch {}
+    try { localStorage.removeItem(STORAGE_KEY); } catch {}
   }
 
   function loadProfile() {
     try {
       const raw = localStorage.getItem(PROFILE_KEY);
       if (raw) {
-        const parsed = JSON.parse(raw);
+        const p = JSON.parse(raw);
         return {
-          displayName: parsed.displayName || "",
-          face: Array.isArray(parsed.face) && parsed.face.length === 64 ? parsed.face : [...DEFAULT_FACE],
-          cosmetics: {
-            cape: Boolean(parsed.cosmetics?.cape),
-            wings: Boolean(parsed.cosmetics?.wings),
-            hat: Boolean(parsed.cosmetics?.hat),
-            aura: Boolean(parsed.cosmetics?.aura),
-            accent: parsed.cosmetics?.accent || "mint"
+          displayName: p.displayName || "",
+          face: Array.isArray(p.face) && p.face.length === 64 ? p.face : [...DEFAULT_FACE],
+          showOthers: p.showOthers !== false,
+          equipped: {
+            capes: p.equipped?.capes || "tide",
+            hats: p.equipped?.hats || "none",
+            wings: p.equipped?.wings || "none",
+            nametags: p.equipped?.nametags || "mint",
+            trails: p.equipped?.trails || "none",
+            emotes: p.equipped?.emotes || "wave"
           }
         };
       }
@@ -164,16 +238,21 @@
     return {
       displayName: "",
       face: [...DEFAULT_FACE],
-      cosmetics: { cape: true, wings: false, hat: false, aura: false, accent: "mint" }
+      showOthers: true,
+      equipped: {
+        capes: "tide",
+        hats: "none",
+        wings: "none",
+        nametags: "mint",
+        trails: "none",
+        emotes: "wave"
+      }
     };
   }
 
   function saveProfileLocal() {
-    try {
-      localStorage.setItem(PROFILE_KEY, JSON.stringify(state.profile));
-    } catch {}
+    try { localStorage.setItem(PROFILE_KEY, JSON.stringify(state.profile)); } catch {}
   }
-
   function generateFriendFace(seedName) {
     let hash = 0;
     for (let i = 0; i < seedName.length; i++) {
@@ -211,19 +290,12 @@
       ctx.strokeStyle = "rgba(255,255,255,0.12)";
       ctx.lineWidth = 1;
       for (let g = 1; g < 8; g++) {
-        ctx.beginPath();
-        ctx.moveTo(g * cell, 0);
-        ctx.lineTo(g * cell, size);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(0, g * cell);
-        ctx.lineTo(size, g * cell);
-        ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(g * cell, 0); ctx.lineTo(g * cell, size); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, g * cell); ctx.lineTo(size, g * cell); ctx.stroke();
       }
     }
   }
-  // Connection Status UI
+
   function setConnStatus(mode, text) {
     connDot.className = "dot " + mode;
     connText.textContent = text;
@@ -231,7 +303,6 @@
     chatConnText.textContent = text;
   }
 
-  // WebSocket Transport
   function connect() {
     if (state.ws && (state.ws.readyState === WebSocket.OPEN || state.ws.readyState === WebSocket.CONNECTING)) {
       return;
@@ -264,11 +335,7 @@
     ws.onmessage = (event) => {
       if (state.ws !== ws) return;
       let msg;
-      try {
-        msg = JSON.parse(event.data);
-      } catch {
-        return;
-      }
+      try { msg = JSON.parse(event.data); } catch { return; }
 
       if (typeof msg.id === "number") {
         const entry = state.pending.get(msg.id);
@@ -279,15 +346,12 @@
             entry.resolve(msg);
           } else {
             const code = msg.code || "unavailable";
-            if (code === "no_session") {
-              handleSignedOut();
-            }
+            if (code === "no_session") handleSignedOut();
             entry.reject(new Error(ERROR_MESSAGES[code] || `Error: ${code}`));
           }
         }
         return;
       }
-
       handleEvent(msg);
     };
 
@@ -335,7 +399,6 @@
       state.ws.send(frame);
     });
   }
-  // Sync Cosmetics & Skin to Incari Backend
   async function syncProfileToGame(silent = false) {
     saveProfileLocal();
     refreshMyProfileUI();
@@ -349,15 +412,12 @@
       await sendRequest("profile", {
         displayName: state.profile.displayName || state.session?.username,
         face: state.profile.face,
-        cosmetics: state.profile.cosmetics
+        cosmetics: state.profile.equipped,
+        showOthers: state.profile.showOthers
       });
-      if (!silent) {
-        showToast("Synced In-Game", "Your skin, display name, and cosmetics are live!");
-      }
+      if (!silent) showToast("Wardrobe Synced", "Your Incari cosmetics and skin are live in-game!");
     } catch {
-      if (!silent) {
-        showToast("Profile Updated", "Applied to client and queued for game sync.");
-      }
+      if (!silent) showToast("Wardrobe Saved", "Applied to client and queued for game sync.");
     }
   }
 
@@ -369,14 +429,11 @@
     renderFaceToCanvas(myAvatarCanvas, state.profile.face, false);
   }
 
-  // Auth Flow
   async function resumeSession(token, fallbackUsername) {
     try {
       const res = await sendRequest("resume", { token });
       const uname = (res.account && res.account.username) || fallbackUsername;
-      if (res.account?.profile) {
-        mergeRemoteProfile(res.account.profile);
-      }
+      if (res.account?.profile) mergeRemoteProfile(res.account.profile);
       onSignedIn(uname);
     } catch {
       clearSession();
@@ -387,7 +444,7 @@
   function mergeRemoteProfile(remote) {
     if (remote.displayName) state.profile.displayName = remote.displayName;
     if (Array.isArray(remote.face) && remote.face.length === 64) state.profile.face = remote.face;
-    if (remote.cosmetics) state.profile.cosmetics = { ...state.profile.cosmetics, ...remote.cosmetics };
+    if (remote.cosmetics) state.profile.equipped = { ...state.profile.equipped, ...remote.cosmetics };
     saveProfileLocal();
   }
 
@@ -396,7 +453,6 @@
     loginError.classList.add("hidden");
     const username = usernameInput.value.trim();
     const password = passwordInput.value;
-
     if (!username || !password) return;
 
     loginBtn.disabled = true;
@@ -406,12 +462,8 @@
       const res = await sendRequest("signin", { username, password });
       passwordInput.value = "";
       const canonicalName = (res.account && res.account.username) || username;
-      if (res.token) {
-        saveSession(canonicalName, res.token);
-      }
-      if (res.account?.profile) {
-        mergeRemoteProfile(res.account.profile);
-      }
+      if (res.token) saveSession(canonicalName, res.token);
+      if (res.account?.profile) mergeRemoteProfile(res.account.profile);
       onSignedIn(canonicalName);
     } catch (err) {
       loginError.textContent = err.message || "Failed to sign in.";
@@ -448,27 +500,225 @@
   }
 
   signoutBtn.addEventListener("click", async () => {
-    try {
-      await sendRequest("signout", { everywhere: false });
-    } catch {}
+    try { await sendRequest("signout", { everywhere: false }); } catch {}
     handleSignedOut();
   });
+  function drawCapeThumbnail(canvas, capeItem) {
+    const ctx = canvas.getContext("2d");
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
 
-  // Skin & Cosmetics Modal Logic
-  function openCustomizer() {
-    state.draftFace = [...state.profile.face];
-    customDisplayNameInput.value = state.profile.displayName || "";
-    capeStyleSelect.value = state.profile.cosmetics.accent || "mint";
+    if (!capeItem.colors) {
+      ctx.strokeStyle = "#8b949e";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(w * 0.3, h * 0.35);
+      ctx.lineTo(w * 0.7, h * 0.65);
+      ctx.moveTo(w * 0.7, h * 0.35);
+      ctx.lineTo(w * 0.3, h * 0.65);
+      ctx.stroke();
+      return;
+    }
 
-    document.querySelectorAll("#cosmetics-grid input[type='checkbox']").forEach((cb) => {
-      const key = cb.dataset.cosmetic;
-      cb.checked = Boolean(state.profile.cosmetics[key]);
+    const [c1, c2, c3] = capeItem.colors;
+    const grad = ctx.createLinearGradient(0, 0, w, h);
+    grad.addColorStop(0, c1);
+    grad.addColorStop(0.55, c2);
+    grad.addColorStop(1, c3);
+    ctx.fillStyle = grad;
+    ctx.fillRect(6, 2, w - 12, h - 4);
+
+    ctx.fillStyle = "rgba(255,255,255,0.28)";
+    for (let y = 6; y < h - 8; y += 8) {
+      for (let x = 10; x < w - 12; x += 8) {
+        if ((x + y) % 16 === 0) ctx.fillRect(x, y, 5, 5);
+      }
+    }
+  }
+
+  function renderCharacterPreview() {
+    const draft = state.draftProfile;
+    if (!draft) return;
+
+    const accountName = state.session?.username || "Player";
+    const shownName = draft.displayName.trim() || accountName;
+    const tagItem = WARDROBE_CATALOG.nametags.items.find((i) => i.id === draft.equipped.nametags);
+    previewNametag.textContent = shownName;
+    previewNametag.style.color = tagItem && !tagItem.color.startsWith("linear") ? tagItem.color : "#38d9a9";
+
+    const ctx = characterPreviewCanvas.getContext("2d");
+    const W = characterPreviewCanvas.width;
+    const H = characterPreviewCanvas.height;
+    ctx.clearRect(0, 0, W, H);
+
+    ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+    ctx.beginPath();
+    ctx.ellipse(W / 2, H - 18, 44, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const cx = W / 2;
+    const headSize = 48;
+    const bodyW = 48;
+    const bodyH = 72;
+    const armW = 20;
+    const legW = 24;
+    const legH = 68;
+    const topY = 38;
+
+    if (draft.equipped.wings !== "none") {
+      const wingObj = WARDROBE_CATALOG.wings.items.find((i) => i.id === draft.equipped.wings);
+      ctx.fillStyle = wingObj?.color || "#38d9a9";
+      ctx.globalAlpha = 0.85;
+      ctx.beginPath();
+      ctx.moveTo(cx - 20, topY + 56);
+      ctx.lineTo(cx - 78, topY + 24);
+      ctx.lineTo(cx - 66, topY + 95);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(cx + 20, topY + 56);
+      ctx.lineTo(cx + 78, topY + 24);
+      ctx.lineTo(cx + 66, topY + 95);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.fillStyle = "#3b359c";
+    ctx.fillRect(cx - legW, topY + headSize + bodyH, legW - 1, legH);
+    ctx.fillRect(cx + 1, topY + headSize + bodyH, legW - 1, legH);
+
+    ctx.fillStyle = "#00a8a8";
+    ctx.fillRect(cx - bodyW / 2 - armW, topY + headSize, armW, bodyH);
+    ctx.fillRect(cx + bodyW / 2, topY + headSize, armW, bodyH);
+    ctx.fillRect(cx - bodyW / 2, topY + headSize, bodyW, bodyH);
+
+    if (!state.previewBack) {
+      const off = document.createElement("canvas");
+      off.width = headSize;
+      off.height = headSize;
+      renderFaceToCanvas(off, draft.face, false);
+      ctx.drawImage(off, cx - headSize / 2, topY);
+    } else {
+      ctx.fillStyle = draft.face || "#2f1e14";
+      ctx.fillRect(cx - headSize / 2, topY, headSize, headSize);
+    }
+
+    if (draft.equipped.capes !== "none") {
+      const capeObj = WARDROBE_CATALOG.capes.items.find((i) => i.id === draft.equipped.capes);
+      if (capeObj && capeObj.colors) {
+        const grad = ctx.createLinearGradient(cx - 22, topY + headSize, cx + 22, topY + headSize + 108);
+        grad.addColorStop(0, capeObj.colors);
+        grad.addColorStop(0.5, capeObj.colors);
+        grad.addColorStop(1, capeObj.colors);
+        ctx.fillStyle = grad;
+
+        if (state.previewBack) {
+          ctx.fillRect(cx - 22, topY + headSize + 2, 44, 108);
+          ctx.fillStyle = "rgba(255,255,255,0.22)";
+          for (let py = topY + headSize + 10; py < topY + headSize + 98; py += 12) {
+            ctx.fillRect(cx - 14, py, 8, 8);
+            ctx.fillRect(cx + 6, py + 6, 8, 8);
+          }
+        } else {
+          ctx.fillRect(cx - 26, topY + headSize + 6, 4, 96);
+          ctx.fillRect(cx + 22, topY + headSize + 6, 4, 96);
+        }
+      }
+    }
+
+    if (draft.equipped.hats !== "none") {
+      const hatObj = WARDROBE_CATALOG.hats.items.find((i) => i.id === draft.equipped.hats);
+      ctx.font = "26px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(hatObj?.icon || "👑", cx, topY - 4);
+    }
+
+    if (draft.equipped.trails !== "none") {
+      const trailObj = WARDROBE_CATALOG.trails.items.find((i) => i.id === draft.equipped.trails);
+      ctx.font = "16px sans-serif";
+      ctx.fillText(trailObj?.icon || "✨", cx - 42, H - 24);
+      ctx.fillText(trailObj?.icon || "✨", cx + 42, H - 32);
+    }
+  }
+  function renderWardrobeCategory(catKey) {
+    state.activeCategory = catKey;
+    document.querySelectorAll("#wardrobe-tabs .w-tab").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.cat === catKey);
     });
 
-    renderFaceToCanvas(faceEditorCanvas, state.draftFace, true);
-    syncStatusLabel.textContent = state.signedIn
-      ? "Connected • Ready to sync in-game"
-      : "Offline • Will save locally";
+    if (catKey === "skin") {
+      wardrobeCatTitle.textContent = "Skin & Face";
+      wardrobeItemsGrid.classList.add("hidden");
+      wardrobeSkinPanel.classList.remove("hidden");
+      renderFaceToCanvas(faceEditorCanvas, state.draftProfile.face, true);
+      return;
+    }
+
+    wardrobeSkinPanel.classList.add("hidden");
+    wardrobeItemsGrid.classList.remove("hidden");
+
+    const cat = WARDROBE_CATALOG[catKey];
+    wardrobeCatTitle.textContent = cat.title;
+    wardrobeItemsGrid.innerHTML = "";
+
+    for (const item of cat.items) {
+      const isEquipped = state.draftProfile.equipped[catKey] === item.id;
+      const card = document.createElement("div");
+      card.className = "w-card" + (isEquipped ? " equipped" : "");
+
+      if (catKey === "capes") {
+        const c = document.createElement("canvas");
+        c.width = 48;
+        c.height = 68;
+        drawCapeThumbnail(c, item);
+        card.appendChild(c);
+      } else if (catKey === "nametags") {
+        const badge = document.createElement("div");
+        badge.style.padding = "14px 6px";
+        badge.style.fontWeight = "800";
+        badge.style.fontSize = "13px";
+        badge.style.color = item.color.startsWith("linear") ? "#38d9a9" : item.color;
+        badge.textContent = "Aa";
+        card.appendChild(badge);
+      } else {
+        const iconDiv = document.createElement("div");
+        iconDiv.style.fontSize = "32px";
+        iconDiv.style.padding = "10px 0";
+        iconDiv.textContent = item.icon || "✨";
+        card.appendChild(iconDiv);
+      }
+
+      const label = document.createElement("div");
+      label.className = "w-card-name";
+      label.textContent = item.name;
+      card.appendChild(label);
+
+      card.addEventListener("click", () => {
+        state.draftProfile.equipped[catKey] = item.id;
+        renderWardrobeCategory(catKey);
+        renderCharacterPreview();
+      });
+
+      wardrobeItemsGrid.appendChild(card);
+    }
+  }
+
+  function openCustomizer() {
+    state.draftProfile = {
+      displayName: state.profile.displayName || "",
+      face: [...state.profile.face],
+      showOthers: state.profile.showOthers,
+      equipped: { ...state.profile.equipped }
+    };
+    customDisplayNameInput.value = state.draftProfile.displayName;
+    showOthersToggle.checked = state.draftProfile.showOthers;
+    state.previewBack = true;
+
+    renderWardrobeCategory("capes");
+    renderCharacterPreview();
     customizerModal.classList.remove("hidden");
   }
 
@@ -480,17 +730,30 @@
   emptyCustomizeBtn.addEventListener("click", openCustomizer);
   openProfileBtn.addEventListener("click", openCustomizer);
   closeModalBtn.addEventListener("click", closeCustomizer);
-  cancelModalBtn.addEventListener("click", closeCustomizer);
+
+  document.querySelectorAll("#wardrobe-tabs .w-tab").forEach((btn) => {
+    btn.addEventListener("click", () => renderWardrobeCategory(btn.dataset.cat));
+  });
+
+  flipPreviewBtn.addEventListener("click", () => {
+    state.previewBack = !state.previewBack;
+    renderCharacterPreview();
+  });
+
+  customDisplayNameInput.addEventListener("input", (e) => {
+    if (state.draftProfile) {
+      state.draftProfile.displayName = e.target.value;
+      renderCharacterPreview();
+    }
+  });
 
   saveCosmeticsBtn.addEventListener("click", async () => {
-    state.profile.face = [...state.draftFace];
-    state.profile.displayName = customDisplayNameInput.value.trim();
-    state.profile.cosmetics.accent = capeStyleSelect.value;
-
-    document.querySelectorAll("#cosmetics-grid input[type='checkbox']").forEach((cb) => {
-      state.profile.cosmetics[cb.dataset.cosmetic] = cb.checked;
-    });
-
+    state.profile = {
+      displayName: state.draftProfile.displayName.trim(),
+      face: [...state.draftProfile.face],
+      showOthers: showOthersToggle.checked,
+      equipped: { ...state.draftProfile.equipped }
+    };
     closeCustomizer();
     await syncProfileToGame(false);
   });
@@ -515,36 +778,29 @@
   });
 
   function paintPixelAtEvent(e) {
-    if (!state.draftFace) return;
+    if (!state.draftProfile) return;
     const rect = faceEditorCanvas.getBoundingClientRect();
-    const scaleX = 8 / rect.width;
-    const scaleY = 8 / rect.height;
-    const col = Math.floor((e.clientX - rect.left) * scaleX);
-    const row = Math.floor((e.clientY - rect.top) * scaleY);
+    const col = Math.floor((e.clientX - rect.left) * (8 / rect.width));
+    const row = Math.floor((e.clientY - rect.top) * (8 / rect.height));
     if (col >= 0 && col < 8 && row >= 0 && row < 8) {
-      state.draftFace[row * 8 + col] = state.activeBrush;
-      renderFaceToCanvas(faceEditorCanvas, state.draftFace, true);
+      state.draftProfile.face[row * 8 + col] = state.activeBrush;
+      renderFaceToCanvas(faceEditorCanvas, state.draftProfile.face, true);
+      renderCharacterPreview();
     }
   }
 
-  faceEditorCanvas.addEventListener("mousedown", (e) => {
-    state.isPainting = true;
-    paintPixelAtEvent(e);
-  });
-  window.addEventListener("mousemove", (e) => {
-    if (state.isPainting) paintPixelAtEvent(e);
-  });
-  window.addEventListener("mouseup", () => {
-    state.isPainting = false;
-  });
+  faceEditorCanvas.addEventListener("mousedown", (e) => { state.isPainting = true; paintPixelAtEvent(e); });
+  window.addEventListener("mousemove", (e) => { if (state.isPainting) paintPixelAtEvent(e); });
+  window.addEventListener("mouseup", () => { state.isPainting = false; });
 
   resetSkinBtn.addEventListener("click", () => {
-    state.draftFace = [...DEFAULT_FACE];
-    renderFaceToCanvas(faceEditorCanvas, state.draftFace, true);
+    state.draftProfile.face = [...DEFAULT_FACE];
+    renderFaceToCanvas(faceEditorCanvas, state.draftProfile.face, true);
+    renderCharacterPreview();
   });
 
   skinFileInput.addEventListener("change", (e) => {
-    const file = e.target.files?.[0];
+    const file = e.target.files?.;
     if (!file) return;
     const img = new Image();
     img.onload = () => {
@@ -559,18 +815,18 @@
         for (let x = 0; x < 8; x++) {
           const base = ctx.getImageData(8 + x, 8 + y, 1, 1).data;
           const hat = ctx.getImageData(40 + x, 8 + y, 1, 1).data;
-          const px = hat[3] > 128 ? hat : base;
-          const hex = "#" + [px[0], px[1], px[2]].map((v) => v.toString(16).padStart(2, "0")).join("");
+          const px = hat > 128 ? hat : base;
+          const hex = "#" + [px, px, px].map((v) => v.toString(16).padStart(2, "0")).join("");
           extracted.push(hex);
         }
       }
-      state.draftFace = extracted;
-      renderFaceToCanvas(faceEditorCanvas, state.draftFace, true);
+      state.draftProfile.face = extracted;
+      renderFaceToCanvas(faceEditorCanvas, state.draftProfile.face, true);
+      renderCharacterPreview();
       skinFileInput.value = "";
     };
     img.src = URL.createObjectURL(file);
   });
-  // Friends & Requests
   function normalizeFriend(f) {
     const displayName = f.displayName || f.profile?.displayName || f.username;
     const face =
@@ -698,16 +954,9 @@
     renderSidebar();
   });
 
-  // Conversations & Messaging
   function getConversation(fid) {
     if (!state.conversations.has(fid)) {
-      state.conversations.set(fid, {
-        messages: [],
-        unread: 0,
-        more: true,
-        loaded: false,
-        loading: false
-      });
+      state.conversations.set(fid, { messages: [], unread: 0, more: true, loaded: false, loading: false });
     }
     return state.conversations.get(fid);
   }
@@ -719,12 +968,8 @@
     renderChatArea();
 
     const conv = getConversation(fid);
-    if (!conv.loaded && !conv.loading) {
-      await fetchHistory(fid, false);
-    }
-    if (conv.unread > 0) {
-      markConversationRead(fid);
-    }
+    if (!conv.loaded && !conv.loading) await fetchHistory(fid, false);
+    if (conv.unread > 0) markConversationRead(fid);
   }
 
   mobileBackBtn.addEventListener("click", () => {
@@ -743,9 +988,7 @@
       const payload = { fid };
       if (older && conv.messages.length > 0) {
         const oldestSent = conv.messages.find((m) => m.delivery === "sent");
-        if (oldestSent) {
-          payload.before = oldestSent.mid;
-        }
+        if (oldestSent) payload.before = oldestSent.mid;
       }
       const res = await sendRequest("history", payload);
       const incoming = Array.isArray(res.messages) ? res.messages : [];
@@ -754,13 +997,7 @@
       const existingIds = new Set(conv.messages.map((m) => m.mid));
       const formatted = incoming
         .filter((m) => !existingIds.has(m.mid))
-        .map((m) => ({
-          mid: m.mid,
-          mine: m.from === "me",
-          text: m.text,
-          at: m.at,
-          delivery: "sent"
-        }));
+        .map((m) => ({ mid: m.mid, mine: m.from === "me", text: m.text, at: m.at, delivery: "sent" }));
 
       if (older) {
         conv.messages = [...formatted, ...conv.messages];
@@ -771,9 +1008,7 @@
 
       conv.more = Boolean(res.more);
       conv.loaded = true;
-      if (state.selectedFid === fid) {
-        renderMessages(fid, !older);
-      }
+      if (state.selectedFid === fid) renderMessages(fid, !older);
     } catch (err) {
       showToast("History Error", err.message);
     } finally {
@@ -783,9 +1018,7 @@
   }
 
   loadOlderBtn.addEventListener("click", () => {
-    if (state.selectedFid) {
-      fetchHistory(state.selectedFid, true);
-    }
+    if (state.selectedFid) fetchHistory(state.selectedFid, true);
   });
 
   function markConversationRead(fid) {
@@ -815,13 +1048,7 @@
     messageInput.value = "";
     const conv = getConversation(fid);
     const localId = "local-" + ++state.localMsgCounter;
-    const msgObj = {
-      mid: localId,
-      mine: true,
-      text,
-      at: Date.now(),
-      delivery: "sending"
-    };
+    const msgObj = { mid: localId, mine: true, text, at: Date.now(), delivery: "sending" };
     conv.messages.push(msgObj);
     renderMessages(fid, true);
 
@@ -834,11 +1061,8 @@
       msgObj.delivery = "failed";
       showToast("Message Not Sent", err.message);
     }
-    if (state.selectedFid === fid) {
-      renderMessages(fid, true);
-    }
+    if (state.selectedFid === fid) renderMessages(fid, true);
   });
-  // Live Events from Incari Server
   function handleEvent(msg) {
     switch (msg.t) {
       case "friend": {
@@ -846,13 +1070,9 @@
           const isNew = !state.friends.has(msg.friend.fid);
           const norm = normalizeFriend(msg.friend);
           state.friends.set(norm.fid, norm);
-          if (isNew) {
-            triggerAlert("New Friend", `${norm.displayName} is now your friend!`);
-          }
+          if (isNew) triggerAlert("New Friend", `${norm.displayName} is now your friend!`);
           renderSidebar();
-          if (state.selectedFid === norm.fid) {
-            renderChatHeader(norm);
-          }
+          if (state.selectedFid === norm.fid) renderChatHeader(norm);
         }
         break;
       }
@@ -863,9 +1083,7 @@
           if (Array.isArray(msg.face) && msg.face.length === 64) existing.face = msg.face;
           if (msg.cosmetics) existing.cosmetics = msg.cosmetics;
           renderSidebar();
-          if (state.selectedFid === msg.fid) {
-            renderChatHeader(existing);
-          }
+          if (state.selectedFid === msg.fid) renderChatHeader(existing);
         }
         break;
       }
@@ -884,14 +1102,8 @@
       }
       case "request": {
         if (msg.rid) {
-          state.requests.set(msg.rid, {
-            rid: msg.rid,
-            incoming: Boolean(msg.incoming),
-            label: msg.label || "Player"
-          });
-          if (msg.incoming) {
-            triggerAlert("Friend Request", `${msg.label} sent you a friend request.`);
-          }
+          state.requests.set(msg.rid, { rid: msg.rid, incoming: Boolean(msg.incoming), label: msg.label || "Player" });
+          if (msg.incoming) triggerAlert("Friend Request", `${msg.label} sent you a friend request.`);
           renderSidebar();
           updateTabBadge();
         }
@@ -909,13 +1121,7 @@
         if (!msg.fid) break;
         const conv = getConversation(msg.fid);
         if (!conv.messages.some((m) => m.mid === msg.mid)) {
-          conv.messages.push({
-            mid: msg.mid,
-            mine: false,
-            text: msg.text,
-            at: msg.at || Date.now(),
-            delivery: "sent"
-          });
+          conv.messages.push({ mid: msg.mid, mine: false, text: msg.text, at: msg.at || Date.now(), delivery: "sent" });
         }
         const friend = state.friends.get(msg.fid);
         const senderName = friend ? friend.displayName : "Friend";
@@ -940,7 +1146,6 @@
     }
   }
 
-  // Rendering & Friend Sorting
   function renderSidebar() {
     const reqs = Array.from(state.requests.values()).sort((a, b) => (b.incoming ? 1 : 0) - (a.incoming ? 1 : 0));
     requestsCount.textContent = reqs.length;
@@ -975,10 +1180,7 @@
     const allFriends = Array.from(state.friends.values())
       .filter((f) => {
         const q = state.filterText;
-        return (
-          f.displayName.toLowerCase().includes(q) ||
-          f.username.toLowerCase().includes(q)
-        );
+        return f.displayName.toLowerCase().includes(q) || f.username.toLowerCase().includes(q);
       })
       .sort((a, b) => {
         if (state.sortBy === "alpha") {
@@ -1017,9 +1219,7 @@
         ${conv.unread > 0 ? `<span class="unread-badge">${conv.unread}</span>` : ""}
       `;
 
-      const canvas = item.querySelector("canvas");
-      renderFaceToCanvas(canvas, f.face, false);
-
+      renderFaceToCanvas(item.querySelector("canvas"), f.face, false);
       item.addEventListener("click", () => selectFriend(f.fid));
       friendsList.appendChild(item);
     }
@@ -1042,9 +1242,7 @@
     peerName.textContent = friend.displayName;
     peerName.title = friend.displayName !== friend.username ? `@${friend.username}` : friend.username;
     peerStatus.textContent = friend.online
-      ? friend.server
-        ? `Online • Playing on ${friend.server}`
-        : "Online"
+      ? friend.server ? `Online • Playing on ${friend.server}` : "Online"
       : "Offline";
   }
 
@@ -1066,12 +1264,9 @@
       messagesList.appendChild(row);
     }
 
-    if (scrollToBottom) {
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
+    if (scrollToBottom) messagesContainer.scrollTop = messagesContainer.scrollHeight;
   }
 
-  // Notifications & Audio
   function updateNotifButton() {
     if (!("Notification" in window)) {
       notifToggleBtn.classList.add("hidden");
@@ -1090,9 +1285,7 @@
     if (!("Notification" in window)) return;
     const perm = await Notification.requestPermission();
     updateNotifButton();
-    if (perm === "granted") {
-      showToast("Notifications Enabled", "You will now receive alerts for new messages.");
-    }
+    if (perm === "granted") showToast("Notifications Enabled", "You will now receive alerts for new messages.");
   });
 
   function playChime() {
@@ -1119,9 +1312,7 @@
       const n = new Notification(title, { body });
       n.onclick = () => {
         window.focus();
-        if (fid && state.friends.has(fid)) {
-          selectFriend(fid);
-        }
+        if (fid && state.friends.has(fid)) selectFriend(fid);
         n.close();
       };
     }
@@ -1132,9 +1323,7 @@
     el.className = "toast";
     el.innerHTML = `<div class="toast-title">${escapeHtml(title)}</div><div>${escapeHtml(text)}</div>`;
     el.addEventListener("click", () => {
-      if (fid && state.friends.has(fid)) {
-        selectFriend(fid);
-      }
+      if (fid && state.friends.has(fid)) selectFriend(fid);
       el.remove();
     });
     toastContainer.appendChild(el);
@@ -1143,12 +1332,8 @@
 
   function updateTabBadge() {
     let total = 0;
-    for (const conv of state.conversations.values()) {
-      total += conv.unread;
-    }
-    for (const req of state.requests.values()) {
-      if (req.incoming) total += 1;
-    }
+    for (const conv of state.conversations.values()) total += conv.unread;
+    for (const req of state.requests.values()) if (req.incoming) total += 1;
     document.title = total > 0 ? `(${total}) Incari Chat` : "Incari Chat";
   }
 
@@ -1163,9 +1348,7 @@
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && state.selectedFid) {
       const conv = getConversation(state.selectedFid);
-      if (conv.unread > 0) {
-        markConversationRead(state.selectedFid);
-      }
+      if (conv.unread > 0) markConversationRead(state.selectedFid);
     }
   });
 
