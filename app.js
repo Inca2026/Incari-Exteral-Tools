@@ -1,7 +1,7 @@
 (() => {
   const WS_URL = "wss://backend.incariclient.org/v1/ws";
   const PROTOCOL_VERSION = 1;
-  const CLIENT_BUILD = "incari/0.1.6-v5";
+const CLIENT_BUILD = "incari/0.1.6";
   const STORAGE_KEY = "incari_chat_session_v1";
   const PROFILE_KEY = "incari_profile_v5";
 
@@ -800,7 +800,7 @@
   });
 
   skinFileInput.addEventListener("change", (e) => {
-    const file = e.target.files?.;
+const file = e.target.files && e.target.files[0];
     if (!file) return;
     const img = new Image();
     img.onload = () => {
