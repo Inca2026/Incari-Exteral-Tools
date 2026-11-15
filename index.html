@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Incari Chat</title>
-  <link rel="stylesheet" href="./style.css?v=4" />
+  <link rel="stylesheet" href="./style.css?v=5" />
 </head>
 <body>
   <!-- Login View -->
@@ -14,7 +14,7 @@
         <div class="brand-badge">I</div>
         <div>
           <h1>Incari Chat</h1>
-          <p class="subtitle">Sign in to message friends &amp; sync cosmetics</p>
+          <p class="subtitle">Sign in to message friends &amp; sync wardrobe</p>
         </div>
       </div>
 
@@ -42,7 +42,7 @@
   <div id="chat-view" class="view">
     <aside class="sidebar">
       <div class="sidebar-top">
-        <div class="user-profile" id="open-profile-btn" title="Customize Skin, Display Name & Cosmetics">
+        <div class="user-profile" id="open-profile-btn" title="Open Incari Wardrobe">
           <canvas id="my-avatar-canvas" class="skin-avatar" width="38" height="38"></canvas>
           <div class="user-meta">
             <div id="my-username" class="username">Player</div>
@@ -54,8 +54,8 @@
         </div>
 
         <div class="top-actions">
-          <button id="customize-btn" class="icon-btn accent-tint" title="Cosmetics & Skin Studio">🎨</button>
-          <button id="notif-toggle-btn" class="icon-btn" title="Toggle Desktop Notifications">🔔</button>
+          <button id="customize-btn" class="icon-btn accent-tint" title="Open Wardrobe">🧥</button>
+          <button id="notif-toggle-btn" class="icon-btn" title="Desktop Notifications">🔔</button>
           <button id="signout-btn" class="icon-btn danger-hover" title="Sign Out">🚪</button>
         </div>
       </div>
@@ -102,7 +102,7 @@
         <h2>Select a friend to chat</h2>
         <p>Choose a friend from the sidebar to read message history and send real-time messages.</p>
         <button id="empty-customize-btn" class="btn ghost small" style="margin-top: 16px;">
-          🎨 Customize Skin &amp; In-Game Cosmetics
+          🧥 Open Incari Wardrobe
         </button>
       </div>
 
@@ -132,26 +132,60 @@
     </main>
   </div>
 
-  <!-- Skin & Cosmetics Studio Modal -->
+  <!-- Incari Wardrobe Modal -->
   <div id="customizer-modal" class="modal-backdrop hidden">
-    <div class="modal-card">
-      <div class="modal-header">
-        <div>
-          <h2>Skin &amp; Cosmetics Studio</h2>
-          <p class="subtitle">Changes sync automatically to your Incari profile &amp; in-game client</p>
+    <div class="wardrobe-window">
+      <!-- Left Category Nav -->
+      <div class="wardrobe-nav">
+        <div class="wardrobe-brand">
+          <span class="wardrobe-icon">🧥</span>
+          <span>WARDROBE</span>
         </div>
-        <button id="close-modal-btn" class="icon-btn">✕</button>
+
+        <div class="wardrobe-tabs" id="wardrobe-tabs">
+          <button type="button" class="w-tab active" data-cat="capes">
+            <span>Capes</span><span class="w-count">7</span>
+          </button>
+          <button type="button" class="w-tab" data-cat="hats">
+            <span>Hats</span><span class="w-count">6</span>
+          </button>
+          <button type="button" class="w-tab" data-cat="wings">
+            <span>Wings &amp; Back</span><span class="w-count">4</span>
+          </button>
+          <button type="button" class="w-tab" data-cat="nametags">
+            <span>Name Tags</span><span class="w-count">8</span>
+          </button>
+          <button type="button" class="w-tab" data-cat="trails">
+            <span>Trails</span><span class="w-count">4</span>
+          </button>
+          <button type="button" class="w-tab" data-cat="emotes">
+            <span>Emotes</span><span class="w-count">8</span>
+          </button>
+          <button type="button" class="w-tab" data-cat="skin">
+            <span>Skin &amp; Face</span><span class="w-count">✎</span>
+          </button>
+        </div>
+
+        <button type="button" id="save-cosmetics-btn" class="wardrobe-done-btn">Done</button>
       </div>
 
-      <div class="modal-body">
-        <div class="studio-col">
-          <div class="studio-section-label">In-Game Face &amp; Skin</div>
+      <!-- Center Item Grid / Skin Editor -->
+      <div class="wardrobe-center">
+        <div class="wardrobe-center-head">
+          <h2 id="wardrobe-cat-title">Capes</h2>
+          <button type="button" id="close-modal-btn" class="icon-btn small-x" title="Close without saving">✕</button>
+        </div>
+
+        <!-- Cosmetic Cards Grid -->
+        <div id="wardrobe-items-grid" class="wardrobe-grid"></div>
+
+        <!-- Skin & Name Editor Panel (shown when "Skin & Face" tab is clicked) -->
+        <div id="wardrobe-skin-panel" class="wardrobe-skin-panel hidden">
           <div class="skin-editor-box">
             <div class="face-grid-wrap">
-              <canvas id="face-editor-canvas" width="160" height="160" title="Click or drag to paint face pixels"></canvas>
+              <canvas id="face-editor-canvas" width="160" height="160"></canvas>
               <span class="helper-caption">Click or drag to paint 8×8 face</span>
             </div>
-
             <div class="palette-controls">
               <div class="color-swatches" id="color-swatches"></div>
               <div class="custom-color-row">
@@ -167,83 +201,34 @@
           </div>
 
           <div class="field" style="margin-top: 14px; margin-bottom: 0;">
-            <label for="custom-display-name">Custom Incari Display Name</label>
+            <label for="custom-display-name">Custom Incari Username / Display Name</label>
             <input id="custom-display-name" type="text" maxlength="24" placeholder="Custom in-game / chat name" />
-          </div>
-        </div>
-
-        <div class="studio-col">
-          <div class="studio-section-label">Equipped Cosmetics</div>
-          <div class="cosmetics-grid" id="cosmetics-grid">
-            <label class="cosmetic-card">
-              <input type="checkbox" data-cosmetic="cape" />
-              <div class="cosmetic-info">
-                <span class="cosmetic-icon">🦸</span>
-                <div>
-                  <div class="cosmetic-title">Incari Founder Cape</div>
-                  <div class="cosmetic-desc">Animated physics back cape</div>
-                </div>
-              </div>
-            </label>
-
-            <label class="cosmetic-card">
-              <input type="checkbox" data-cosmetic="wings" />
-              <div class="cosmetic-info">
-                <span class="cosmetic-icon">🪽</span>
-                <div>
-                  <div class="cosmetic-title">Aether Dragon Wings</div>
-                  <div class="cosmetic-desc">Gliding back wing model</div>
-                </div>
-              </div>
-            </label>
-
-            <label class="cosmetic-card">
-              <input type="checkbox" data-cosmetic="hat" />
-              <div class="cosmetic-info">
-                <span class="cosmetic-icon">👑</span>
-                <div>
-                  <div class="cosmetic-title">Celestial Crown</div>
-                  <div class="cosmetic-desc">Floating head cosmetic</div>
-                </div>
-              </div>
-            </label>
-
-            <label class="cosmetic-card">
-              <input type="checkbox" data-cosmetic="aura" />
-              <div class="cosmetic-info">
-                <span class="cosmetic-icon">✨</span>
-                <div>
-                  <div class="cosmetic-title">Mint Particle Aura</div>
-                  <div class="cosmetic-desc">Subtle trail particles in-game</div>
-                </div>
-              </div>
-            </label>
-          </div>
-
-          <div class="field" style="margin-top: 12px; margin-bottom: 0;">
-            <label for="cape-style-select">Cape &amp; Aura Accent Color</label>
-            <select id="cape-style-select">
-              <option value="mint">Incari Mint (#38D9A9)</option>
-              <option value="crimson">Crimson Core (#F85149)</option>
-              <option value="azure">Azure Sky (#20A4F3)</option>
-              <option value="gold">Solar Gold (#E3B341)</option>
-              <option value="void">Void Amethyst (#A371F7)</option>
-            </select>
           </div>
         </div>
       </div>
 
-      <div class="modal-footer">
-        <span id="sync-status-label" class="sync-status">Ready to sync with Incari</span>
-        <div style="display: flex; gap: 8px;">
-          <button type="button" id="cancel-modal-btn" class="btn ghost">Cancel</button>
-          <button type="button" id="save-cosmetics-btn" class="btn primary">Save &amp; Sync In-Game</button>
+      <!-- Right Live Character Preview -->
+      <div class="wardrobe-preview">
+        <div class="preview-nametag" id="preview-nametag">GloriousMelon123</div>
+
+        <div class="preview-stage">
+          <canvas id="character-preview-canvas" width="180" height="240"></canvas>
+          <button type="button" id="flip-preview-btn" class="flip-btn" title="Rotate Front / Back">↻ Flip View</button>
+        </div>
+
+        <div class="preview-footer">
+          <div class="incari-visible-note">✓ Incari players see this</div>
+          <label class="show-others-row">
+            <span>Show others' cosmetics</span>
+            <input type="checkbox" id="show-others-toggle" checked />
+            <span class="toggle-pill"></span>
+          </label>
         </div>
       </div>
     </div>
   </div>
 
   <div id="toast-container" class="toast-container"></div>
-  <script src="./app.js?v=4"></script>
+  <script src="./app.js?v=5"></script>
 </body>
 </html>
