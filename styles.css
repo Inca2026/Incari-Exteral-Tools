@@ -1,9 +1,9 @@
 :root {
-  --bg-base: #0d1117;
-  --bg-surface: #161b22;
-  --bg-elevated: #1f2630;
-  --bg-hover: #262f3d;
-  --border: #30363d;
+  --bg-base: #0b0e14;
+  --bg-surface: #131820;
+  --bg-elevated: #1b222d;
+  --bg-hover: #232c3a;
+  --border: #2a3342;
   --text-primary: #f0f6fc;
   --text-secondary: #8b949e;
   --accent: #38d9a9;
@@ -27,6 +27,22 @@ body {
   font-family: var(--font);
   height: 100vh;
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3d485c;
 }
 
 .hidden {
@@ -43,12 +59,22 @@ body {
   display: flex;
 }
 
+.skin-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  image-rendering: pixelated;
+  flex-shrink: 0;
+}
+
 /* Auth View */
 #login-view {
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: radial-gradient(circle at top, #15222b 0%, var(--bg-base) 65%);
+  background: radial-gradient(circle at top, #152430 0%, var(--bg-base) 65%);
 }
 
 .auth-card {
@@ -58,7 +84,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 28px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
 }
 
 .brand-header {
@@ -99,40 +125,48 @@ body {
 
 .field label {
   display: block;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
   margin-bottom: 6px;
 }
 
 input[type="text"],
-input[type="password"] {
+input[type="password"],
+select {
   width: 100%;
   background: var(--bg-base);
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 11px 13px;
+  padding: 10px 12px;
   color: var(--text-primary);
   font-size: 14px;
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-input:focus {
+input:focus,
+select:focus {
   border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
 }
 
 .btn {
   border: none;
   border-radius: 10px;
-  padding: 11px 16px;
+  padding: 10px 16px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, opacity 0.15s;
+  transition: background 0.15s, opacity 0.15s, transform 0.1s;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .btn:disabled {
@@ -210,9 +244,9 @@ input:focus {
 .dot.connecting { background: var(--warning); }
 .dot.offline { background: var(--text-secondary); }
 
-/* Chat Layout */
+/* Sidebar */
 .sidebar {
-  width: 310px;
+  width: 320px;
   background: var(--bg-surface);
   border-right: 1px solid var(--border);
   display: flex;
@@ -221,11 +255,12 @@ input:focus {
 }
 
 .sidebar-top {
-  padding: 16px;
+  padding: 14px 16px;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
 }
 
 .user-profile {
@@ -233,27 +268,19 @@ input:focus {
   align-items: center;
   gap: 10px;
   min-width: 0;
-}
-
-.avatar {
-  width: 38px;
-  height: 38px;
+  padding: 4px 6px;
+  margin-left: -6px;
   border-radius: 10px;
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-  font-weight: 700;
-  font-size: 15px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-transform: uppercase;
-  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.15s;
 }
 
-.avatar.mint {
-  background: var(--accent-dim);
-  color: var(--accent);
-  border: 1px solid rgba(56, 217, 169, 0.35);
+.user-profile:hover {
+  background: var(--bg-hover);
+}
+
+.user-meta {
+  min-width: 0;
 }
 
 .user-meta .username {
@@ -276,6 +303,7 @@ input:focus {
 .top-actions {
   display: flex;
   gap: 6px;
+  flex-shrink: 0;
 }
 
 .icon-btn {
@@ -284,16 +312,22 @@ input:focus {
   color: var(--text-primary);
   width: 34px;
   height: 34px;
-  border-radius: 8px;
+  border-radius: 9px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 15px;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 .icon-btn:hover {
   background: var(--bg-hover);
+}
+
+.icon-btn.accent-tint {
+  border-color: rgba(56, 217, 169, 0.4);
+  background: var(--accent-dim);
 }
 
 .icon-btn.active-notif {
@@ -301,6 +335,10 @@ input:focus {
   background: var(--accent-dim);
 }
 
+.icon-btn.danger-hover:hover {
+  border-color: var(--danger);
+  background: rgba(248, 81, 73, 0.14);
+}
 .add-friend-box {
   padding: 12px 14px 6px;
 }
@@ -325,13 +363,17 @@ input:focus {
   color: #ff9b96;
 }
 
-.search-box {
+.filter-controls {
   padding: 8px 14px 12px;
   border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.search-box input {
-  padding: 8px 10px;
+.filter-controls input,
+.filter-controls select {
+  padding: 7px 10px;
   font-size: 13px;
 }
 
@@ -380,6 +422,7 @@ input:focus {
   cursor: pointer;
   transition: background 0.12s;
   gap: 10px;
+  border: 1px solid transparent;
 }
 
 .friend-item:hover {
@@ -388,7 +431,7 @@ input:focus {
 
 .friend-item.selected {
   background: var(--accent-dim);
-  border: 1px solid rgba(56, 217, 169, 0.3);
+  border-color: rgba(56, 217, 169, 0.3);
 }
 
 .friend-left {
@@ -400,14 +443,15 @@ input:focus {
 
 .avatar-wrap {
   position: relative;
+  display: flex;
 }
 
 .presence-dot {
   position: absolute;
-  bottom: -1px;
-  right: -1px;
-  width: 10px;
-  height: 10px;
+  bottom: -2px;
+  right: -2px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
   border: 2px solid var(--bg-surface);
 }
@@ -583,7 +627,7 @@ input:focus {
   padding: 10px 14px;
   border-radius: 14px;
   font-size: 14px;
-  line-height: 1.4;
+  line-height: 1.45;
   word-wrap: break-word;
   white-space: pre-wrap;
 }
@@ -626,7 +670,203 @@ input:focus {
   flex: 1;
 }
 
-/* Toasts */
+/* Skin & Cosmetics Modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 8, 13, 0.78);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 1000;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 680px;
+  max-height: 92vh;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.65);
+  overflow: hidden;
+}
+
+.modal-header {
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-header h2 {
+  font-size: 18px;
+}
+
+.modal-body {
+  padding: 20px 22px;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+}
+
+.studio-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+
+.skin-editor-box {
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.face-grid-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+#face-editor-canvas {
+  width: 144px;
+  height: 144px;
+  border-radius: 10px;
+  border: 2px solid var(--border);
+  image-rendering: pixelated;
+  cursor: crosshair;
+}
+
+.helper-caption {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.palette-controls {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.color-swatches {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.swatch-btn {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+
+.swatch-btn.active {
+  border-color: #fff;
+  transform: scale(1.08);
+}
+
+.custom-color-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.custom-color-row input[type="color"] {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.upload-label {
+  cursor: pointer;
+  text-align: center;
+}
+
+.cosmetics-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cosmetic-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.cosmetic-card:hover {
+  background: var(--bg-elevated);
+}
+
+.cosmetic-card input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.cosmetic-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cosmetic-icon {
+  font-size: 20px;
+}
+
+.cosmetic-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.cosmetic-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.modal-footer {
+  padding: 14px 22px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-base);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sync-status {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
 .toast-container {
   position: fixed;
   bottom: 20px;
@@ -634,7 +874,7 @@ input:focus {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  z-index: 999;
+  z-index: 1100;
 }
 
 .toast {
@@ -675,5 +915,8 @@ input:focus {
   }
   .mobile-only {
     display: inline-flex;
+  }
+  .modal-body {
+    grid-template-columns: 1fr;
   }
 }
