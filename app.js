@@ -807,9 +807,10 @@
     renderCharacterPreview();
   });
 
-  skinFileInput?.addEventListener("change", (e) => {
-    const file = e.target.files && e.target.files;
-    if (!file) return;
+skinFileInput?.addEventListener("change", (e) => {
+  const file = e.target.files ? e.target.files.item(0) : null;
+  if (!file) return;
+
     const img = new Image();
     img.onload = () => {
       const off = document.createElement("canvas");
@@ -823,8 +824,9 @@
         for (let x = 0; x < 8; x++) {
           const base = ctx.getImageData(8 + x, 8 + y, 1, 1).data;
           const hat = ctx.getImageData(40 + x, 8 + y, 1, 1).data;
-          const px = hat > 128 ? hat : base;
-          const hex = "#" + [px, px, px].map((v) => v.toString(16).padStart(2, "0")).join("");
+    const px = hat.at(3) > 128 ? hat : base;
+const hex = "#" + [px.at(0), px.at(1), px.at(2)].map((v) => v.toString(16).padStart(2, "0")).join("");
+
           extracted.push(hex);
         }
       }
