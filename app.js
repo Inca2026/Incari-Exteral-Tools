@@ -1,7 +1,7 @@
 (() => {
   const WS_URL = "wss://backend.incariclient.org/v1/ws";
   const PROTOCOL_VERSION = 1;
-const CLIENT_BUILD = "incari/0.1.6";
+  const CLIENT_BUILD = "incari/0.1.6";
   const STORAGE_KEY = "incari_chat_session_v1";
   const PROFILE_KEY = "incari_profile_v5";
 
@@ -297,10 +297,10 @@ const CLIENT_BUILD = "incari/0.1.6";
   }
 
   function setConnStatus(mode, text) {
-    connDot.className = "dot " + mode;
-    connText.textContent = text;
-    chatConnDot.className = "dot " + mode;
-    chatConnText.textContent = text;
+    if (connDot) connDot.className = "dot " + mode;
+    if (connText) connText.textContent = text;
+    if (chatConnDot) chatConnDot.className = "dot " + mode;
+    if (chatConnText) chatConnText.textContent = text;
   }
 
   function connect() {
@@ -424,8 +424,10 @@ const CLIENT_BUILD = "incari/0.1.6";
   function refreshMyProfileUI() {
     const accountName = state.session?.username || "Player";
     const shownName = state.profile.displayName.trim() || accountName;
-    myUsername.textContent = shownName;
-    myUsername.title = shownName !== accountName ? `Account: ${accountName}` : accountName;
+    if (myUsername) {
+      myUsername.textContent = shownName;
+      myUsername.title = shownName !== accountName ? `Account: ${accountName}` : accountName;
+    }
     renderFaceToCanvas(myAvatarCanvas, state.profile.face, false);
   }
 
@@ -448,7 +450,7 @@ const CLIENT_BUILD = "incari/0.1.6";
     saveProfileLocal();
   }
 
-  loginForm.addEventListener("submit", async (e) => {
+  loginForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
     loginError.classList.add("hidden");
     const username = usernameInput.value.trim();
@@ -499,7 +501,7 @@ const CLIENT_BUILD = "incari/0.1.6";
     renderChatArea();
   }
 
-  signoutBtn.addEventListener("click", async () => {
+  signoutBtn?.addEventListener("click", async () => {
     try { await sendRequest("signout", { everywhere: false }); } catch {}
     handleSignedOut();
   });
@@ -539,13 +541,15 @@ const CLIENT_BUILD = "incari/0.1.6";
 
   function renderCharacterPreview() {
     const draft = state.draftProfile;
-    if (!draft) return;
+    if (!draft || !characterPreviewCanvas) return;
 
     const accountName = state.session?.username || "Player";
     const shownName = draft.displayName.trim() || accountName;
     const tagItem = WARDROBE_CATALOG.nametags.items.find((i) => i.id === draft.equipped.nametags);
-    previewNametag.textContent = shownName;
-    previewNametag.style.color = tagItem && !tagItem.color.startsWith("linear") ? tagItem.color : "#38d9a9";
+    if (previewNametag) {
+      previewNametag.textContent = shownName;
+      previewNametag.style.color = tagItem && !tagItem.color.startsWith("linear") ? tagItem.color : "#38d9a9";
+    }
 
     const ctx = characterPreviewCanvas.getContext("2d");
     const W = characterPreviewCanvas.width;
@@ -707,14 +711,15 @@ const CLIENT_BUILD = "incari/0.1.6";
   }
 
   function openCustomizer() {
+    if (!customizerModal) return;
     state.draftProfile = {
       displayName: state.profile.displayName || "",
       face: [...state.profile.face],
       showOthers: state.profile.showOthers,
       equipped: { ...state.profile.equipped }
     };
-    customDisplayNameInput.value = state.draftProfile.displayName;
-    showOthersToggle.checked = state.draftProfile.showOthers;
+    if (customDisplayNameInput) customDisplayNameInput.value = state.draftProfile.displayName;
+    if (showOthersToggle) showOthersToggle.checked = state.draftProfile.showOthers;
     state.previewBack = true;
 
     renderWardrobeCategory("capes");
@@ -723,62 +728,64 @@ const CLIENT_BUILD = "incari/0.1.6";
   }
 
   function closeCustomizer() {
-    customizerModal.classList.add("hidden");
+    if (customizerModal) customizerModal.classList.add("hidden");
   }
 
-  customizeBtn.addEventListener("click", openCustomizer);
-  emptyCustomizeBtn.addEventListener("click", openCustomizer);
-  openProfileBtn.addEventListener("click", openCustomizer);
-  closeModalBtn.addEventListener("click", closeCustomizer);
+  customizeBtn?.addEventListener("click", openCustomizer);
+  emptyCustomizeBtn?.addEventListener("click", openCustomizer);
+  openProfileBtn?.addEventListener("click", openCustomizer);
+  closeModalBtn?.addEventListener("click", closeCustomizer);
 
   document.querySelectorAll("#wardrobe-tabs .w-tab").forEach((btn) => {
     btn.addEventListener("click", () => renderWardrobeCategory(btn.dataset.cat));
   });
 
-  flipPreviewBtn.addEventListener("click", () => {
+  flipPreviewBtn?.addEventListener("click", () => {
     state.previewBack = !state.previewBack;
     renderCharacterPreview();
   });
 
-  customDisplayNameInput.addEventListener("input", (e) => {
+  customDisplayNameInput?.addEventListener("input", (e) => {
     if (state.draftProfile) {
       state.draftProfile.displayName = e.target.value;
       renderCharacterPreview();
     }
   });
 
-  saveCosmeticsBtn.addEventListener("click", async () => {
+  saveCosmeticsBtn?.addEventListener("click", async () => {
     state.profile = {
       displayName: state.draftProfile.displayName.trim(),
       face: [...state.draftProfile.face],
-      showOthers: showOthersToggle.checked,
+      showOthers: showOthersToggle ? showOthersToggle.checked : true,
       equipped: { ...state.draftProfile.equipped }
     };
     closeCustomizer();
     await syncProfileToGame(false);
   });
 
-  PALETTE_SWATCHES.forEach((hex, idx) => {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "swatch-btn" + (idx === 0 ? " active" : "");
-    btn.style.background = hex;
-    btn.addEventListener("click", () => {
-      state.activeBrush = hex;
-      customColorPicker.value = hex;
-      document.querySelectorAll(".swatch-btn").forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
+  if (colorSwatches) {
+    PALETTE_SWATCHES.forEach((hex, idx) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "swatch-btn" + (idx === 0 ? " active" : "");
+      btn.style.background = hex;
+      btn.addEventListener("click", () => {
+        state.activeBrush = hex;
+        if (customColorPicker) customColorPicker.value = hex;
+        document.querySelectorAll(".swatch-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+      });
+      colorSwatches.appendChild(btn);
     });
-    colorSwatches.appendChild(btn);
-  });
+  }
 
-  customColorPicker.addEventListener("input", (e) => {
+  customColorPicker?.addEventListener("input", (e) => {
     state.activeBrush = e.target.value;
     document.querySelectorAll(".swatch-btn").forEach((b) => b.classList.remove("active"));
   });
 
   function paintPixelAtEvent(e) {
-    if (!state.draftProfile) return;
+    if (!state.draftProfile || !faceEditorCanvas) return;
     const rect = faceEditorCanvas.getBoundingClientRect();
     const col = Math.floor((e.clientX - rect.left) * (8 / rect.width));
     const row = Math.floor((e.clientY - rect.top) * (8 / rect.height));
@@ -789,18 +796,19 @@ const CLIENT_BUILD = "incari/0.1.6";
     }
   }
 
-  faceEditorCanvas.addEventListener("mousedown", (e) => { state.isPainting = true; paintPixelAtEvent(e); });
+  faceEditorCanvas?.addEventListener("mousedown", (e) => { state.isPainting = true; paintPixelAtEvent(e); });
   window.addEventListener("mousemove", (e) => { if (state.isPainting) paintPixelAtEvent(e); });
   window.addEventListener("mouseup", () => { state.isPainting = false; });
 
-  resetSkinBtn.addEventListener("click", () => {
+  resetSkinBtn?.addEventListener("click", () => {
+    if (!state.draftProfile) return;
     state.draftProfile.face = [...DEFAULT_FACE];
     renderFaceToCanvas(faceEditorCanvas, state.draftProfile.face, true);
     renderCharacterPreview();
   });
 
-  skinFileInput.addEventListener("change", (e) => {
-const file = e.target.files && e.target.files[0];
+  skinFileInput?.addEventListener("change", (e) => {
+    const file = e.target.files && e.target.files;
     if (!file) return;
     const img = new Image();
     img.onload = () => {
@@ -880,7 +888,7 @@ const file = e.target.files && e.target.files[0];
     }
   }
 
-  addFriendForm.addEventListener("submit", async (e) => {
+  addFriendForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const target = addFriendInput.value.trim();
     if (!target) return;
@@ -904,6 +912,7 @@ const file = e.target.files && e.target.files[0];
   });
 
   function showFeedback(text, isError) {
+    if (!friendFeedback) return;
     friendFeedback.textContent = text;
     friendFeedback.className = isError ? "feedback-text err" : "feedback-text";
     friendFeedback.classList.remove("hidden");
@@ -925,7 +934,7 @@ const file = e.target.files && e.target.files[0];
     }
   }
 
-  unfriendBtn.addEventListener("click", async () => {
+  unfriendBtn?.addEventListener("click", async () => {
     if (!state.selectedFid) return;
     const friend = state.friends.get(state.selectedFid);
     if (!friend) return;
@@ -944,12 +953,12 @@ const file = e.target.files && e.target.files[0];
     }
   });
 
-  searchFriendsInput.addEventListener("input", (e) => {
+  searchFriendsInput?.addEventListener("input", (e) => {
     state.filterText = e.target.value.toLowerCase();
     renderSidebar();
   });
 
-  sortFriendsSelect.addEventListener("change", (e) => {
+  sortFriendsSelect?.addEventListener("change", (e) => {
     state.sortBy = e.target.value;
     renderSidebar();
   });
@@ -972,7 +981,7 @@ const file = e.target.files && e.target.files[0];
     if (conv.unread > 0) markConversationRead(fid);
   }
 
-  mobileBackBtn.addEventListener("click", () => {
+  mobileBackBtn?.addEventListener("click", () => {
     chatView.classList.remove("mobile-chat-open");
     state.selectedFid = null;
     renderSidebar();
@@ -1017,7 +1026,7 @@ const file = e.target.files && e.target.files[0];
     }
   }
 
-  loadOlderBtn.addEventListener("click", () => {
+  loadOlderBtn?.addEventListener("click", () => {
     if (state.selectedFid) fetchHistory(state.selectedFid, true);
   });
 
@@ -1039,7 +1048,7 @@ const file = e.target.files && e.target.files[0];
     sendRequest("read", payload).catch(() => {});
   }
 
-  messageForm.addEventListener("submit", async (e) => {
+  messageForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const fid = state.selectedFid;
     const text = messageInput.value.trim();
@@ -1268,6 +1277,7 @@ const file = e.target.files && e.target.files[0];
   }
 
   function updateNotifButton() {
+    if (!notifToggleBtn) return;
     if (!("Notification" in window)) {
       notifToggleBtn.classList.add("hidden");
       return;
@@ -1281,11 +1291,18 @@ const file = e.target.files && e.target.files[0];
     }
   }
 
-  notifToggleBtn.addEventListener("click", async () => {
-    if (!("Notification" in window)) return;
+  notifToggleBtn?.addEventListener("click", async () => {
+    if (!("Notification" in window)) {
+      showToast("Not Supported", "Your browser does not support desktop notifications.");
+      return;
+    }
     const perm = await Notification.requestPermission();
     updateNotifButton();
-    if (perm === "granted") showToast("Notifications Enabled", "You will now receive alerts for new messages.");
+    if (perm === "granted") {
+      showToast("Notifications Enabled", "You will now receive alerts for new messages.");
+    } else {
+      showToast("Notifications Blocked", "Enable notifications for this site in your browser's address bar lock icon.");
+    }
   });
 
   function playChime() {
