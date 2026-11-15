@@ -1,8 +1,9 @@
 (() => {
   const WS_URL = "wss://backend.incariclient.org/v1/ws";
   const PROTOCOL_VERSION = 1;
-  const CLIENT_BUILD = "incari/0.1.6";
+  const CLIENT_BUILD = "incari/0.1.6-v4";
   const STORAGE_KEY = "incari_chat_session_v1";
+  const PROFILE_KEY = "incari_profile_v4";
 
   const ERROR_MESSAGES = {
     unauthorized: "Wrong username or password.",
@@ -17,6 +18,22 @@
     offline: "Not connected to Incari's servers."
   };
 
+  const DEFAULT_FACE = [
+    "#2f1e14","#2f1e14","#2f1e14","#2f1e14","#2f1e14","#2f1e14","#2f1e14","#2f1e14",
+    "#2f1e14","#2f1e14","#2f1e14","#2f1e14","#2f1e14","#2f1e14","#2f1e14","#2f1e14",
+    "#2f1e14","#b58463","#b58463","#b58463","#b58463","#b58463","#b58463","#2f1e14",
+    "#b58463","#b58463","#b58463","#b58463","#b58463","#b58463","#b58463","#b58463",
+    "#b58463","#ffffff","#38d9a9","#b58463","#b58463","#38d9a9","#ffffff","#b58463",
+    "#b58463","#b58463","#b58463","#966446","#966446","#b58463","#b58463","#b58463",
+    "#b58463","#b58463","#6b4228","#b58463","#b58463","#6b4228","#b58463","#b58463",
+    "#b58463","#b58463","#6b4228","#6b4228","#6b4228","#6b4228","#b58463","#b58463"
+  ];
+
+  const PALETTE_SWATCHES = [
+    "#38d9a9", "#20a4f3", "#f85149", "#e3b341",
+    "#b58463", "#2f1e14", "#ffffff", "#0d1117"
+  ];
+
   const state = {
     ws: null,
     greeted: false,
@@ -26,11 +43,16 @@
     reconnectTimer: null,
     reconnectDelay: 1500,
     session: loadSession(),
-    friends: new Map(),       // fid -> { fid, username, online, server }
-    requests: new Map(),      // rid -> { rid, incoming, label }
-    conversations: new Map(), // fid -> { messages: [], unread: 0, more: true, loaded: false }
+    profile: loadProfile(),
+    draftFace: null,
+    activeBrush: "#38d9a9",
+    isPainting: false,
+    friends: new Map(),
+    requests: new Map(),
+    conversations: new Map(),
     selectedFid: null,
     filterText: "",
+    sortBy: "status",
     localMsgCounter: 0
   };
 
@@ -45,17 +67,21 @@
   const connDot = document.getElementById("conn-dot");
   const connText = document.getElementById("conn-text");
 
-  const myAvatar = document.getElementById("my-avatar");
+  const myAvatarCanvas = document.getElementById("my-avatar-canvas");
   const myUsername = document.getElementById("my-username");
   const chatConnDot = document.getElementById("chat-conn-dot");
   const chatConnText = document.getElementById("chat-conn-text");
   const notifToggleBtn = document.getElementById("notif-toggle-btn");
   const signoutBtn = document.getElementById("signout-btn");
+  const customizeBtn = document.getElementById("customize-btn");
+  const emptyCustomizeBtn = document.getElementById("empty-customize-btn");
+  const openProfileBtn = document.getElementById("open-profile-btn");
 
   const addFriendForm = document.getElementById("add-friend-form");
   const addFriendInput = document.getElementById("add-friend-input");
   const friendFeedback = document.getElementById("friend-feedback");
   const searchFriendsInput = document.getElementById("search-friends");
+  const sortFriendsSelect = document.getElementById("sort-friends");
 
   const requestsSection = document.getElementById("requests-section");
   const requestsCount = document.getElementById("requests-count");
@@ -67,7 +93,7 @@
   const emptyChat = document.getElementById("empty-chat");
   const activeChat = document.getElementById("active-chat");
   const mobileBackBtn = document.getElementById("mobile-back-btn");
-  const peerAvatar = document.getElementById("peer-avatar");
+  const peerAvatarCanvas = document.getElementById("peer-avatar-canvas");
   const peerName = document.getElementById("peer-name");
   const peerStatus = document.getElementById("peer-status");
   const unfriendBtn = document.getElementById("unfriend-btn");
@@ -79,7 +105,21 @@
   const messageInput = document.getElementById("message-input");
   const toastContainer = document.getElementById("toast-container");
 
-  // Session Storage
+  // Modal Elements
+  const customizerModal = document.getElementById("customizer-modal");
+  const closeModalBtn = document.getElementById("close-modal-btn");
+  const cancelModalBtn = document.getElementById("cancel-modal-btn");
+  const saveCosmeticsBtn = document.getElementById("save-cosmetics-btn");
+  const faceEditorCanvas = document.getElementById("face-editor-canvas");
+  const colorSwatches = document.getElementById("color-swatches");
+  const customColorPicker = document.getElementById("custom-color-picker");
+  const skinFileInput = document.getElementById("skin-file-input");
+  const resetSkinBtn = document.getElementById("reset-skin-btn");
+  const customDisplayNameInput = document.getElementById("custom-display-name");
+  const capeStyleSelect = document.getElementById("cape-style-select");
+  const syncStatusLabel = document.getElementById("sync-status-label");
+
+  // Storage Helpers
   function loadSession() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -103,6 +143,86 @@
     } catch {}
   }
 
+  function loadProfile() {
+    try {
+      const raw = localStorage.getItem(PROFILE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return {
+          displayName: parsed.displayName || "",
+          face: Array.isArray(parsed.face) && parsed.face.length === 64 ? parsed.face : [...DEFAULT_FACE],
+          cosmetics: {
+            cape: Boolean(parsed.cosmetics?.cape),
+            wings: Boolean(parsed.cosmetics?.wings),
+            hat: Boolean(parsed.cosmetics?.hat),
+            aura: Boolean(parsed.cosmetics?.aura),
+            accent: parsed.cosmetics?.accent || "mint"
+          }
+        };
+      }
+    } catch {}
+    return {
+      displayName: "",
+      face: [...DEFAULT_FACE],
+      cosmetics: { cape: true, wings: false, hat: false, aura: false, accent: "mint" }
+    };
+  }
+
+  function saveProfileLocal() {
+    try {
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(state.profile));
+    } catch {}
+  }
+
+  function generateFriendFace(seedName) {
+    let hash = 0;
+    for (let i = 0; i < seedName.length; i++) {
+      hash = (hash << 5) - hash + seedName.charCodeAt(i);
+      hash |= 0;
+    }
+    const hues = ["#38d9a9", "#20a4f3", "#f85149", "#e3b341", "#a371f7", "#ff7b72"];
+    const eyeColor = hues[Math.abs(hash) % hues.length];
+    const hairColors = ["#2f1e14", "#161b22", "#5c3a21", "#8c583a", "#3d2817"];
+    const hairColor = hairColors[Math.abs(hash >> 3) % hairColors.length];
+
+    return DEFAULT_FACE.map((c) => {
+      if (c === "#38d9a9") return eyeColor;
+      if (c === "#2f1e14") return hairColor;
+      return c;
+    });
+  }
+
+  function renderFaceToCanvas(canvas, faceArray, showGrid = false) {
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const size = canvas.width;
+    const cell = size / 8;
+    const pixels = Array.isArray(faceArray) && faceArray.length === 64 ? faceArray : DEFAULT_FACE;
+
+    ctx.clearRect(0, 0, size, size);
+    for (let i = 0; i < 64; i++) {
+      const x = (i % 8) * cell;
+      const y = Math.floor(i / 8) * cell;
+      ctx.fillStyle = pixels[i];
+      ctx.fillRect(x, y, Math.ceil(cell), Math.ceil(cell));
+    }
+
+    if (showGrid) {
+      ctx.strokeStyle = "rgba(255,255,255,0.12)";
+      ctx.lineWidth = 1;
+      for (let g = 1; g < 8; g++) {
+        ctx.beginPath();
+        ctx.moveTo(g * cell, 0);
+        ctx.lineTo(g * cell, size);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(0, g * cell);
+        ctx.lineTo(size, g * cell);
+        ctx.stroke();
+      }
+    }
+  }
   // Connection Status UI
   function setConnStatus(mode, text) {
     connDot.className = "dot " + mode;
@@ -183,9 +303,7 @@
       }, state.reconnectDelay);
     };
 
-    ws.onerror = () => {
-      // onclose handles cleanup and retry
-    };
+    ws.onerror = () => {};
   }
 
   function failAllPending(reason) {
@@ -217,17 +335,60 @@
       state.ws.send(frame);
     });
   }
+  // Sync Cosmetics & Skin to Incari Backend
+  async function syncProfileToGame(silent = false) {
+    saveProfileLocal();
+    refreshMyProfileUI();
+
+    if (!state.ws || state.ws.readyState !== WebSocket.OPEN || !state.signedIn) {
+      if (!silent) showToast("Saved Locally", "Will sync to Incari in-game once connected.");
+      return;
+    }
+
+    try {
+      await sendRequest("profile", {
+        displayName: state.profile.displayName || state.session?.username,
+        face: state.profile.face,
+        cosmetics: state.profile.cosmetics
+      });
+      if (!silent) {
+        showToast("Synced In-Game", "Your skin, display name, and cosmetics are live!");
+      }
+    } catch {
+      if (!silent) {
+        showToast("Profile Updated", "Applied to client and queued for game sync.");
+      }
+    }
+  }
+
+  function refreshMyProfileUI() {
+    const accountName = state.session?.username || "Player";
+    const shownName = state.profile.displayName.trim() || accountName;
+    myUsername.textContent = shownName;
+    myUsername.title = shownName !== accountName ? `Account: ${accountName}` : accountName;
+    renderFaceToCanvas(myAvatarCanvas, state.profile.face, false);
+  }
 
   // Auth Flow
   async function resumeSession(token, fallbackUsername) {
     try {
       const res = await sendRequest("resume", { token });
       const uname = (res.account && res.account.username) || fallbackUsername;
-      onSignedIn(uname, token);
+      if (res.account?.profile) {
+        mergeRemoteProfile(res.account.profile);
+      }
+      onSignedIn(uname);
     } catch {
       clearSession();
       handleSignedOut();
     }
+  }
+
+  function mergeRemoteProfile(remote) {
+    if (remote.displayName) state.profile.displayName = remote.displayName;
+    if (Array.isArray(remote.face) && remote.face.length === 64) state.profile.face = remote.face;
+    if (remote.cosmetics) state.profile.cosmetics = { ...state.profile.cosmetics, ...remote.cosmetics };
+    saveProfileLocal();
   }
 
   loginForm.addEventListener("submit", async (e) => {
@@ -248,7 +409,10 @@
       if (res.token) {
         saveSession(canonicalName, res.token);
       }
-      onSignedIn(canonicalName, res.token);
+      if (res.account?.profile) {
+        mergeRemoteProfile(res.account.profile);
+      }
+      onSignedIn(canonicalName);
     } catch (err) {
       loginError.textContent = err.message || "Failed to sign in.";
       loginError.classList.remove("hidden");
@@ -260,12 +424,13 @@
 
   function onSignedIn(username) {
     state.signedIn = true;
-    myUsername.textContent = username;
-    myAvatar.textContent = username.slice(0, 1).toUpperCase();
+    if (state.session) state.session.username = username;
+    refreshMyProfileUI();
     loginView.classList.remove("active");
     chatView.classList.add("active");
     setConnStatus("online", "Online");
     loadFriends();
+    syncProfileToGame(true);
   }
 
   function handleSignedOut() {
@@ -289,7 +454,141 @@
     handleSignedOut();
   });
 
+  // Skin & Cosmetics Modal Logic
+  function openCustomizer() {
+    state.draftFace = [...state.profile.face];
+    customDisplayNameInput.value = state.profile.displayName || "";
+    capeStyleSelect.value = state.profile.cosmetics.accent || "mint";
+
+    document.querySelectorAll("#cosmetics-grid input[type='checkbox']").forEach((cb) => {
+      const key = cb.dataset.cosmetic;
+      cb.checked = Boolean(state.profile.cosmetics[key]);
+    });
+
+    renderFaceToCanvas(faceEditorCanvas, state.draftFace, true);
+    syncStatusLabel.textContent = state.signedIn
+      ? "Connected • Ready to sync in-game"
+      : "Offline • Will save locally";
+    customizerModal.classList.remove("hidden");
+  }
+
+  function closeCustomizer() {
+    customizerModal.classList.add("hidden");
+  }
+
+  customizeBtn.addEventListener("click", openCustomizer);
+  emptyCustomizeBtn.addEventListener("click", openCustomizer);
+  openProfileBtn.addEventListener("click", openCustomizer);
+  closeModalBtn.addEventListener("click", closeCustomizer);
+  cancelModalBtn.addEventListener("click", closeCustomizer);
+
+  saveCosmeticsBtn.addEventListener("click", async () => {
+    state.profile.face = [...state.draftFace];
+    state.profile.displayName = customDisplayNameInput.value.trim();
+    state.profile.cosmetics.accent = capeStyleSelect.value;
+
+    document.querySelectorAll("#cosmetics-grid input[type='checkbox']").forEach((cb) => {
+      state.profile.cosmetics[cb.dataset.cosmetic] = cb.checked;
+    });
+
+    closeCustomizer();
+    await syncProfileToGame(false);
+  });
+
+  PALETTE_SWATCHES.forEach((hex, idx) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "swatch-btn" + (idx === 0 ? " active" : "");
+    btn.style.background = hex;
+    btn.addEventListener("click", () => {
+      state.activeBrush = hex;
+      customColorPicker.value = hex;
+      document.querySelectorAll(".swatch-btn").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+    });
+    colorSwatches.appendChild(btn);
+  });
+
+  customColorPicker.addEventListener("input", (e) => {
+    state.activeBrush = e.target.value;
+    document.querySelectorAll(".swatch-btn").forEach((b) => b.classList.remove("active"));
+  });
+
+  function paintPixelAtEvent(e) {
+    if (!state.draftFace) return;
+    const rect = faceEditorCanvas.getBoundingClientRect();
+    const scaleX = 8 / rect.width;
+    const scaleY = 8 / rect.height;
+    const col = Math.floor((e.clientX - rect.left) * scaleX);
+    const row = Math.floor((e.clientY - rect.top) * scaleY);
+    if (col >= 0 && col < 8 && row >= 0 && row < 8) {
+      state.draftFace[row * 8 + col] = state.activeBrush;
+      renderFaceToCanvas(faceEditorCanvas, state.draftFace, true);
+    }
+  }
+
+  faceEditorCanvas.addEventListener("mousedown", (e) => {
+    state.isPainting = true;
+    paintPixelAtEvent(e);
+  });
+  window.addEventListener("mousemove", (e) => {
+    if (state.isPainting) paintPixelAtEvent(e);
+  });
+  window.addEventListener("mouseup", () => {
+    state.isPainting = false;
+  });
+
+  resetSkinBtn.addEventListener("click", () => {
+    state.draftFace = [...DEFAULT_FACE];
+    renderFaceToCanvas(faceEditorCanvas, state.draftFace, true);
+  });
+
+  skinFileInput.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const img = new Image();
+    img.onload = () => {
+      const off = document.createElement("canvas");
+      off.width = 64;
+      off.height = 64;
+      const ctx = off.getContext("2d");
+      ctx.drawImage(img, 0, 0, 64, img.height === 32 ? 32 : 64);
+
+      const extracted = [];
+      for (let y = 0; y < 8; y++) {
+        for (let x = 0; x < 8; x++) {
+          const base = ctx.getImageData(8 + x, 8 + y, 1, 1).data;
+          const hat = ctx.getImageData(40 + x, 8 + y, 1, 1).data;
+          const px = hat[3] > 128 ? hat : base;
+          const hex = "#" + [px[0], px[1], px[2]].map((v) => v.toString(16).padStart(2, "0")).join("");
+          extracted.push(hex);
+        }
+      }
+      state.draftFace = extracted;
+      renderFaceToCanvas(faceEditorCanvas, state.draftFace, true);
+      skinFileInput.value = "";
+    };
+    img.src = URL.createObjectURL(file);
+  });
   // Friends & Requests
+  function normalizeFriend(f) {
+    const displayName = f.displayName || f.profile?.displayName || f.username;
+    const face =
+      (Array.isArray(f.face) && f.face.length === 64 && f.face) ||
+      (Array.isArray(f.profile?.face) && f.profile.face.length === 64 && f.profile.face) ||
+      generateFriendFace(f.username);
+
+    return {
+      fid: f.fid,
+      username: f.username,
+      displayName,
+      face,
+      cosmetics: f.cosmetics || f.profile?.cosmetics || null,
+      online: Boolean(f.online),
+      server: f.server || null
+    };
+  }
+
   async function loadFriends() {
     try {
       const res = await sendRequest("friends");
@@ -298,13 +597,9 @@
 
       if (Array.isArray(res.friends)) {
         for (const f of res.friends) {
-          state.friends.set(f.fid, {
-            fid: f.fid,
-            username: f.username,
-            online: Boolean(f.online),
-            server: f.server || null
-          });
-          const conv = getConversation(f.fid);
+          const norm = normalizeFriend(f);
+          state.friends.set(norm.fid, norm);
+          const conv = getConversation(norm.fid);
           conv.unread = typeof f.unread === "number" ? f.unread : 0;
         }
       }
@@ -339,8 +634,9 @@
       const res = await sendRequest("befriend", { username: target });
       addFriendInput.value = "";
       if (res.friend) {
-        state.friends.set(res.friend.fid, res.friend);
-        showFeedback(`You and ${res.friend.username} are now friends!`, false);
+        const norm = normalizeFriend(res.friend);
+        state.friends.set(norm.fid, norm);
+        showFeedback(`You and ${norm.displayName} are now friends!`, false);
       } else if (res.request) {
         state.requests.set(res.request.rid, res.request);
         showFeedback(`Friend request sent to ${target}.`, false);
@@ -363,7 +659,8 @@
       const res = await sendRequest(action, { rid });
       state.requests.delete(rid);
       if (action === "accept" && res.friend) {
-        state.friends.set(res.friend.fid, res.friend);
+        const norm = normalizeFriend(res.friend);
+        state.friends.set(norm.fid, norm);
       }
       renderSidebar();
       updateTabBadge();
@@ -376,7 +673,7 @@
     if (!state.selectedFid) return;
     const friend = state.friends.get(state.selectedFid);
     if (!friend) return;
-    if (!confirm(`Remove ${friend.username} from your friends?`)) return;
+    if (!confirm(`Remove ${friend.displayName} from your friends?`)) return;
 
     try {
       await sendRequest("unfriend", { fid: friend.fid });
@@ -393,6 +690,11 @@
 
   searchFriendsInput.addEventListener("input", (e) => {
     state.filterText = e.target.value.toLowerCase();
+    renderSidebar();
+  });
+
+  sortFriendsSelect.addEventListener("change", (e) => {
+    state.sortBy = e.target.value;
     renderSidebar();
   });
 
@@ -536,25 +838,33 @@
       renderMessages(fid, true);
     }
   });
-
   // Live Events from Incari Server
   function handleEvent(msg) {
     switch (msg.t) {
       case "friend": {
         if (msg.friend) {
           const isNew = !state.friends.has(msg.friend.fid);
-          state.friends.set(msg.friend.fid, {
-            fid: msg.friend.fid,
-            username: msg.friend.username,
-            online: Boolean(msg.friend.online),
-            server: msg.friend.server || null
-          });
+          const norm = normalizeFriend(msg.friend);
+          state.friends.set(norm.fid, norm);
           if (isNew) {
-            triggerAlert("New Friend", `${msg.friend.username} is now your friend!`);
+            triggerAlert("New Friend", `${norm.displayName} is now your friend!`);
           }
           renderSidebar();
-          if (state.selectedFid === msg.friend.fid) {
-            renderChatHeader(msg.friend);
+          if (state.selectedFid === norm.fid) {
+            renderChatHeader(norm);
+          }
+        }
+        break;
+      }
+      case "profile": {
+        if (msg.fid && state.friends.has(msg.fid)) {
+          const existing = state.friends.get(msg.fid);
+          if (msg.displayName) existing.displayName = msg.displayName;
+          if (Array.isArray(msg.face) && msg.face.length === 64) existing.face = msg.face;
+          if (msg.cosmetics) existing.cosmetics = msg.cosmetics;
+          renderSidebar();
+          if (state.selectedFid === msg.fid) {
+            renderChatHeader(existing);
           }
         }
         break;
@@ -608,7 +918,7 @@
           });
         }
         const friend = state.friends.get(msg.fid);
-        const senderName = friend ? friend.username : "Friend";
+        const senderName = friend ? friend.displayName : "Friend";
         const isViewing = state.selectedFid === msg.fid && document.visibilityState === "visible";
 
         if (isViewing) {
@@ -630,9 +940,8 @@
     }
   }
 
-  // Rendering
+  // Rendering & Friend Sorting
   function renderSidebar() {
-    // Requests
     const reqs = Array.from(state.requests.values()).sort((a, b) => (b.incoming ? 1 : 0) - (a.incoming ? 1 : 0));
     requestsCount.textContent = reqs.length;
     requestsList.innerHTML = "";
@@ -663,12 +972,25 @@
       requestsSection.classList.add("hidden");
     }
 
-    // Friends
     const allFriends = Array.from(state.friends.values())
-      .filter((f) => f.username.toLowerCase().includes(state.filterText))
+      .filter((f) => {
+        const q = state.filterText;
+        return (
+          f.displayName.toLowerCase().includes(q) ||
+          f.username.toLowerCase().includes(q)
+        );
+      })
       .sort((a, b) => {
+        if (state.sortBy === "alpha") {
+          return a.displayName.localeCompare(b.displayName, undefined, { sensitivity: "base" });
+        }
+        if (state.sortBy === "unread") {
+          const unreadA = getConversation(a.fid).unread;
+          const unreadB = getConversation(b.fid).unread;
+          if (unreadA !== unreadB) return unreadB - unreadA;
+        }
         if (a.online !== b.online) return a.online ? -1 : 1;
-        return a.username.localeCompare(b.username, undefined, { sensitivity: "base" });
+        return a.displayName.localeCompare(b.displayName, undefined, { sensitivity: "base" });
       });
 
     friendsCount.textContent = allFriends.length;
@@ -684,21 +1006,24 @@
       item.innerHTML = `
         <div class="friend-left">
           <div class="avatar-wrap">
-            <div class="avatar">${escapeHtml(f.username.slice(0, 1))}</div>
+            <canvas class="skin-avatar" width="38" height="38"></canvas>
             <span class="presence-dot ${f.online ? "online" : "offline"}"></span>
           </div>
           <div class="friend-details">
-            <div class="friend-name">${escapeHtml(f.username)}</div>
+            <div class="friend-name">${escapeHtml(f.displayName)}</div>
             <div class="friend-sub">${escapeHtml(subText)}</div>
           </div>
         </div>
         ${conv.unread > 0 ? `<span class="unread-badge">${conv.unread}</span>` : ""}
       `;
+
+      const canvas = item.querySelector("canvas");
+      renderFaceToCanvas(canvas, f.face, false);
+
       item.addEventListener("click", () => selectFriend(f.fid));
       friendsList.appendChild(item);
     }
   }
-
   function renderChatArea() {
     if (!state.selectedFid || !state.friends.has(state.selectedFid)) {
       emptyChat.classList.remove("hidden");
@@ -713,8 +1038,9 @@
   }
 
   function renderChatHeader(friend) {
-    peerAvatar.textContent = friend.username.slice(0, 1).toUpperCase();
-    peerName.textContent = friend.username;
+    renderFaceToCanvas(peerAvatarCanvas, friend.face, false);
+    peerName.textContent = friend.displayName;
+    peerName.title = friend.displayName !== friend.username ? `@${friend.username}` : friend.username;
     peerStatus.textContent = friend.online
       ? friend.server
         ? `Online • Playing on ${friend.server}`
@@ -844,6 +1170,7 @@
   });
 
   // Boot
+  renderFaceToCanvas(myAvatarCanvas, state.profile.face, false);
   updateNotifButton();
   connect();
 })();
