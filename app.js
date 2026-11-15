@@ -614,9 +614,10 @@
       const capeObj = WARDROBE_CATALOG.capes.items.find((i) => i.id === draft.equipped.capes);
       if (capeObj && capeObj.colors) {
         const grad = ctx.createLinearGradient(cx - 22, topY + headSize, cx + 22, topY + headSize + 108);
-        grad.addColorStop(0, capeObj.colors);
-        grad.addColorStop(0.5, capeObj.colors);
-        grad.addColorStop(1, capeObj.colors);
+      grad.addColorStop(0, capeObj.colors.at(0));
+grad.addColorStop(0.5, capeObj.colors.at(1));
+grad.addColorStop(1, capeObj.colors.at(2));
+
         ctx.fillStyle = grad;
 
         if (state.previewBack) {
