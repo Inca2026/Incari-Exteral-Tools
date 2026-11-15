@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Incari Chat</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Login View -->
+    <section id="login-view" class="view active">
+      <div class="auth-card">
+        <div class="brand-header">
+          <div class="brand-badge">I</div>
+          <div>
+            <h1>Incari Chat</h1>
+            <p class="subtitle">Sign in to message your Incari friends</p>
+          </div>
+        </div>
+
+        <form id="login-form">
+          <div class="field">
+            <label for="username">Incari Username</label>
+            <input type="text" id="username" name="username" autocomplete="username" placeholder="Enter your username" required minlength="3" maxlength="16" />
+          </div>
+
+          <div class="field">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" autocomplete="current-password" placeholder="Enter your password" required minlength="10" maxlength="128" />
+          </div>
+
+          <div id="login-error" class="error-banner hidden"></div>
+
+          <button type="submit" id="login-btn" class="btn primary full">
+            Sign In
+          </button>
+        </form>
+
+        <div class="connection-pill">
+          <span id="conn-dot" class="dot connecting"></span>
+          <span id="conn-text">Connecting to Incari service...</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Chat View -->
+    <section id="chat-view" class="view">
+      <aside class="sidebar">
+        <div class="sidebar-top">
+          <div class="user-profile">
+            <div id="my-avatar" class="avatar mint">?</div>
+            <div class="user-meta">
+              <div id="my-username" class="username">Player</div>
+              <div class="status-line">
+                <span id="chat-conn-dot" class="dot online"></span>
+                <span id="chat-conn-text">Online</span>
+              </div>
+            </div>
+          </div>
+          <div class="top-actions">
+            <button id="notif-toggle-btn" class="icon-btn" title="Enable Desktop Notifications">
+              🔔
+            </button>
+            <button id="signout-btn" class="icon-btn danger" title="Sign Out">
+              🚪
+            </button>
+          </div>
+        </div>
+
+        <div class="add-friend-box">
+          <form id="add-friend-form">
+            <input type="text" id="add-friend-input" placeholder="Add friend by username..." maxlength="16" />
+            <button type="submit" class="btn small primary" title="Send Friend Request">+</button>
+          </form>
+          <div id="friend-feedback" class="feedback-text hidden"></div>
+        </div>
+
+        <div class="search-box">
+          <input type="text" id="search-friends" placeholder="Filter friends..." />
+        </div>
+
+        <div class="sidebar-scroll">
+          <div id="requests-section" class="list-section hidden">
+            <div class="section-title">Friend Requests <span id="requests-count" class="pill-count">0</span></div>
+            <div id="requests-list" class="item-list"></div>
+          </div>
+
+          <div class="list-section">
+            <div class="section-title">Friends <span id="friends-count" class="pill-count">0</span></div>
+            <div id="friends-list" class="item-list"></div>
+            <div id="empty-friends" class="empty-hint">No friends yet. Add someone above!</div>
+          </div>
+        </div>
+      </aside>
+
+      <main class="chat-main">
+        <div id="empty-chat" class="empty-chat-state">
+          <div class="empty-icon">💬</div>
+          <h2>Select a friend to chat</h2>
+          <p>Choose a friend from the sidebar to read message history and send real-time messages.</p>
+        </div>
+
+        <div id="active-chat" class="active-chat hidden">
+          <header class="chat-header">
+            <div class="peer-info">
+              <button id="mobile-back-btn" class="icon-btn mobile-only" title="Back">←</button>
+              <div id="peer-avatar" class="avatar">?</div>
+              <div>
+                <div id="peer-name" class="peer-name">Friend</div>
+                <div id="peer-status" class="peer-status">Offline</div>
+              </div>
+            </div>
+            <div class="peer-actions">
+              <button id="unfriend-btn" class="btn small ghost danger-text" title="Remove Friend">Unfriend</button>
+            </div>
+          </header>
+
+          <div id="messages-container" class="messages-container">
+            <button id="load-older-btn" class="btn small ghost load-older hidden">Load older messages</button>
+            <div id="messages-list" class="messages-list"></div>
+          </div>
+
+          <form id="message-form" class="message-composer">
+            <input type="text" id="message-input" placeholder="Send a message..." maxlength="500" autocomplete="off" />
+            <button type="submit" id="send-btn" class="btn primary">Send</button>
+          </form>
+        </div>
+      </main>
+    </section>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+  <script src="app.js"></script>
+</body>
+</html>
